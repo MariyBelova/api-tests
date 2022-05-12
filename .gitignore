@@ -1,3 +1,4 @@
-target
+# Project exclude paths
+/target/
 .idea
-*.xml
+allure-report

@@ -1,35 +1,50 @@
 package ru.MariyBelova.tests;
 
+import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.MariyBelova.dao.BookingRequest;
+import ru.MariyBelova.dao.CreateTokenRequest;
+
+import java.io.FileInputStream;
+import java.io.IOException;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static ru.MariyBelova.tests.CreateTokenTests.PROPERTIES_FILE_PATH;
+import static ru.MariyBelova.tests.CreateTokenTests.properties;
 
 public class PatchBookingTests {
     static String token;
     String id;
 
     @BeforeAll
-    static void beforeAll() {
+
+    static void beforeAll() throws IOException {
+        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+
+        CreateTokenRequest request = CreateTokenRequest.builder()
+                .username("admin")
+                .password("password123")
+                .build();
+        properties.load(new FileInputStream(PROPERTIES_FILE_PATH));
+        RestAssured.baseURI = properties.getProperty("base.url");
+
         token = given()//предусловия, подготовка
                 .log()
                 .all()
                 .header("Content-Type", "application/json")
-                .body("{\n"
-                        + "    \"username\" : \"admin\",\n"
-                        + "    \"password\" : \"password123\"\n"
-                        + "}")
+                .body(request)
                 .expect()
                 .statusCode(200)
                 .body("token", is(CoreMatchers.not(nullValue())))
                 .when()
-                .post("https://restful-booker.herokuapp.com/auth")//шаг(и)
+                .post("/auth")//шаг(и)
                 .prettyPeek()
                 .body()
                 .jsonPath()
@@ -44,27 +59,29 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .header("Content-Type", "application/json")
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(
+                        "{\n"
+                                + "    \"firstname\" : \"Jim\",\n"
+                                + "    \"lastname\" : \"Moris\",\n"
+                                + "    \"totalprice\" : 111,\n"
+                                + "    \"depositpaid\" : true,\n"
+                                + "    \"bookingdates\" : {\n"
+                                + "        \"checkin\" : \"2018-01-01\",\n"
+                                + "        \"checkout\" : \"2019-01-01\"\n"
+                                + "    },\n"
+                                + "    \"additionalneeds\" : \"Breakfast\"\n"
+                                + "}")
                 .expect()
                 .statusCode(200)
                 .when()
-                .post("https://restful-booker.herokuapp.com/booking")
+                .post("/booking")
                 .prettyPeek()
                 .body()
                 .jsonPath()
                 .get("bookingid")
                 .toString();
     }
+
     @AfterEach
     void deleteBooking() {
         given()
@@ -72,7 +89,7 @@ public class PatchBookingTests {
                 .all()
                 .header("Authorization", "Basic YWRtaW46cGFzc3dvcmQxMjM=")
                 .when()
-                .delete("https://restful-booker.herokuapp.com/booking/" + id)
+                .delete("/booking/" + id)
                 .prettyPeek();
     }
 
@@ -94,12 +111,11 @@ public class PatchBookingTests {
                         + "    \"additionalneeds\" : \"Breakfast\"\n"
                         + "}")
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek()
                 .then()
                 .statusCode(200)
                 .body("firstname", equalTo("Mary"));
-
     }
 
     @Test
@@ -108,24 +124,20 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Moris\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Moris")
+                        .totalprice(111)
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-01-01")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek()
                 .then()
                 .statusCode(200)
                 .body("lastname", equalTo("Moris"));
-
     }
 
     @Test
@@ -134,24 +146,20 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 8546321,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Brown")
+                        .totalprice(8546321)
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-01-01")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek()
                 .then()
                 .statusCode(200)
                 .body("totalprice", equalTo(8546321));
-
     }
 
     @Test
@@ -160,24 +168,20 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : false,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Brown")
+                        .totalprice(111)
+                        .depositpaid(false)
+                        .bookingdates("2018-01-01", "2019-01-01")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek()
                 .then()
                 .statusCode(200)
                 .body("depositpaid", equalTo(false));
-
     }
 
     @Test
@@ -186,24 +190,20 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-05-08\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"diner\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Brown")
+                        .totalprice(111)
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-01-01")
+                        .additionalneeds("diner")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek()
                 .then()
                 .statusCode(200)
                 .body("additionalneeds", equalTo("diner"));
-
     }
 
     @Test
@@ -212,23 +212,19 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-05-08\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Brown")
+                        .totalprice(111)
+                        .depositpaid(true)
+                        .bookingdates("2018-03-04", "2019-01-01")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek();
         assertThat(response.statusCode(), equalTo(200));
-        assertThat(response.body().jsonPath().get("checking"), nullValue());
-
+        assertThat(response.body().jsonPath().get("checkout"), nullValue());
     }
 
     @Test
@@ -237,47 +233,59 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-05-08\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Brown")
+                        .totalprice(111)
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-03-04")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek();
         assertThat(response.statusCode(), equalTo(200));
         assertThat(response.body().jsonPath().get("checkout"), nullValue());
-
     }
 
     @Test
-    void patchBookingFirstnameNullNegativeTest() {
+    void patchBookingTotalPriceNullNegativeTest() {
         Response response = given()
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : ,\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .lastname("Brown")
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-01-01")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek();
-        assertThat(response.statusCode(), equalTo(400));
+        assertThat(response.statusCode(), equalTo(200));
+        assertThat(response.body().jsonPath().get("totalprice"), notNullValue());
+    }
 
+    @Test
+    void patchBookingFirstNameChangeNullNegativeTest() {
+        Response response = given()
+                .log()
+                .all()
+                .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
+                .body(BookingRequest.builder()
+                        .lastname("Brown")
+                        .totalprice(111)
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-03-04")
+                        .additionalneeds("Breakfast")
+                        .build())
+                .when()
+                .patch("/booking/" + id)
+                .prettyPeek();
+        assertThat(response.statusCode(), equalTo(200));
+        assertThat(response.body().jsonPath().get("firstname"), notNullValue());
     }
 
     @Test
@@ -286,46 +294,18 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : ,\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(BookingRequest.builder()
+                        .firstname("Jim")
+                        .totalprice(111)
+                        .depositpaid(true)
+                        .bookingdates("2018-01-01", "2019-01-01")
+                        .additionalneeds("Breakfast")
+                        .build())
                 .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
+                .patch("/booking/" + id)
                 .prettyPeek();
-        assertThat(response.statusCode(), equalTo(400));
-
-    }
-
-    @Test
-    void patchBookingTotalPriceChangeNullNegativeTest() {
-        Response response = given()
-                .log()
-                .all()
-                .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Jim\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : ,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
-                .when()
-                .patch("https://restful-booker.herokuapp.com/booking/" + id)
-                .prettyPeek();
-        assertThat(response.statusCode(), equalTo(400));
-
+        assertThat(response.statusCode(), equalTo(200));
+        assertThat(response.body().jsonPath().get("lastname"), notNullValue());
     }
 
 

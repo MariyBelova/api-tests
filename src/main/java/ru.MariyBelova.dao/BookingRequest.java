@@ -35,7 +35,6 @@ public  class BookingRequest {
     @JsonProperty("additionalneeds")
     private String additionalneeds;
 
-
     public static class BookingRequestBuilder {
         private String firstname;
         private String lastname;

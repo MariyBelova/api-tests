@@ -12,25 +12,38 @@ import ru.MariyBelova.dao.CreateTokenRequest;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static ru.MariyBelova.tests.CreateTokenTests.PROPERTIES_FILE_PATH;
-import static ru.MariyBelova.tests.CreateTokenTests.properties;
 
 public class PatchBookingTests {
     static String token;
     String id;
+    static final String PROPERTIES_FILE_PATH = "src/test/resources/application.properties";
+    private static CreateTokenRequest request;
+    private static BookingRequest requestbooking;
+    static Properties properties = new Properties();
+
 
     @BeforeAll
 
     static void beforeAll() throws IOException {
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
-        CreateTokenRequest request = CreateTokenRequest.builder()
+        request = CreateTokenRequest.builder()
                 .username("admin")
                 .password("password123")
+                .build();
+
+        requestbooking = BookingRequest.builder()
+                .firstname("Jim")
+                .lastname("Brown")
+                .totalprice(111)
+                .depositpaid(true)
+                .bookingdates("2018-01-01", "2019-01-01")
+                .additionalneeds("Breakfast")
                 .build();
         properties.load(new FileInputStream(PROPERTIES_FILE_PATH));
         RestAssured.baseURI = properties.getProperty("base.url");
@@ -60,17 +73,17 @@ public class PatchBookingTests {
                 .all()
                 .header("Content-Type", "application/json")
                 .body(
-                        "{\n"
-                                + "    \"firstname\" : \"Jim\",\n"
-                                + "    \"lastname\" : \"Moris\",\n"
-                                + "    \"totalprice\" : 111,\n"
-                                + "    \"depositpaid\" : true,\n"
+                       "{\n"
+                              + "    \"firstname\" : \"Jim\",\n"
+                                + "    \"lastname\" : \"Brown\",\n"
+                               + "    \"totalprice\" : 111,\n"
+                               + "    \"depositpaid\" : true,\n"
                                 + "    \"bookingdates\" : {\n"
-                                + "        \"checkin\" : \"2018-01-01\",\n"
+                               + "        \"checkin\" : \"2018-01-01\",\n"
                                 + "        \"checkout\" : \"2019-01-01\"\n"
-                                + "    },\n"
-                                + "    \"additionalneeds\" : \"Breakfast\"\n"
-                                + "}")
+                               + "    },\n"
+                               + "    \"additionalneeds\" : \"Breakfast\"\n"
+                               + "}")
                 .expect()
                 .statusCode(200)
                 .when()
@@ -95,21 +108,12 @@ public class PatchBookingTests {
 
     @Test
     void patchBookingFirstnameChangePositiveTest() {
-        given()
+         given()
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body("{\n"
-                        + "    \"firstname\" : \"Mary\",\n"
-                        + "    \"lastname\" : \"Brown\",\n"
-                        + "    \"totalprice\" : 111,\n"
-                        + "    \"depositpaid\" : true,\n"
-                        + "    \"bookingdates\" : {\n"
-                        + "        \"checkin\" : \"2018-01-01\",\n"
-                        + "        \"checkout\" : \"2019-01-01\"\n"
-                        + "    },\n"
-                        + "    \"additionalneeds\" : \"Breakfast\"\n"
-                        + "}")
+                .body(requestbooking.withFirstname("Mary"))
+                .expect()
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek()
@@ -124,14 +128,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Moris")
-                        .totalprice(111)
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-01-01")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withLastname("Moris"))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek()
@@ -146,15 +143,8 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Brown")
-                        .totalprice(8546321)
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-01-01")
-                        .additionalneeds("Breakfast")
-                        .build())
-                .when()
+                .body(requestbooking.withTotalprice(8546321))
+                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek()
                 .then()
@@ -168,14 +158,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Brown")
-                        .totalprice(111)
-                        .depositpaid(false)
-                        .bookingdates("2018-01-01", "2019-01-01")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withDepositpaid(false))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek()
@@ -190,14 +173,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Brown")
-                        .totalprice(111)
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-01-01")
-                        .additionalneeds("diner")
-                        .build())
+                .body(requestbooking.withAdditionalneeds("diner"))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek()
@@ -212,19 +188,12 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Brown")
-                        .totalprice(111)
-                        .depositpaid(true)
-                        .bookingdates("2018-03-04", "2019-01-01")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withCheckin("2018-03-04"))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek();
         assertThat(response.statusCode(), equalTo(200));
-        assertThat(response.body().jsonPath().get("checkout"), nullValue());
+        assertThat(response.body().jsonPath().get("checkin"), nullValue());
     }
 
     @Test
@@ -233,14 +202,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Brown")
-                        .totalprice(111)
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-03-04")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withCheckout("2019-03-04"))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek();
@@ -254,13 +216,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .lastname("Brown")
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-01-01")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withTotalprice(0))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek();
@@ -274,13 +230,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .lastname("Brown")
-                        .totalprice(111)
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-03-04")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withFirstname(""))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek();
@@ -294,13 +244,7 @@ public class PatchBookingTests {
                 .log()
                 .all()
                 .headers("Content-Type", "application/json", "Accept", "application/json", "Cookie", "token=" + token)
-                .body(BookingRequest.builder()
-                        .firstname("Jim")
-                        .totalprice(111)
-                        .depositpaid(true)
-                        .bookingdates("2018-01-01", "2019-01-01")
-                        .additionalneeds("Breakfast")
-                        .build())
+                .body(requestbooking.withLastname(""))
                 .when()
                 .patch("/booking/" + id)
                 .prettyPeek();

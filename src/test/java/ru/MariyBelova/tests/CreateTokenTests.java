@@ -88,7 +88,7 @@ public class CreateTokenTests {
                 .header("Content-Type", "application/json")
                 .body(request.withUsername("admin1233333"))
                 .when()
-                .post("https://restful-booker.herokuapp.com/auth")//шаг(и)
+                .post("/auth")//шаг(и)
                 .prettyPeek();
         assertThat(response.statusCode(), equalTo(200));
         assertThat(response.body().jsonPath().get("reason"), containsStringIgnoringCase("Bad credentials"));
